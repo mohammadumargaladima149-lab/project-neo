@@ -19,7 +19,7 @@ type Screen =
 
 type SortMode = "liked" | "newest" | "unexpected";
 
-function App() {
+function App(): JSX.Element {
   const [screen, setScreen] = useState<Screen>("explore");
 
   const [selectedScenario, setSelectedScenario] =
@@ -121,8 +121,33 @@ function App() {
   function submitAnswers() {
     if (!canSubmit) return;
 
-    setScreen("reveal");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const submittedAnswers = [
+        questionOne.trim(),
+        questionTwo.trim(),
+        questionThree.trim(),
+      ];
+
+      const newAnswers: CommunityAnswer[] = submittedAnswers.map(
+        (answer, index) => ({
+          id: Date.now() + index,
+          name: "You",
+          answer,
+          likes: 0,
+        })
+      );
+
+      setCommunityAnswers((currentAnswers) => [
+        ...newAnswers,
+        ...currentAnswers,
+      ]);
+
+      setScreen("reveal");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      console.error("Answer submission failed:", error);
+      window.alert("We couldn't submit your answers. Please try again.");
+    }
   }
 
   function toggleLike(id: number) {
@@ -435,9 +460,7 @@ function App() {
               )}
             </div>
           </section>
-        )}
-
-        {/* =========================
+                {/* =========================
             HOME / SCENARIO
            ========================= */}
 
@@ -802,9 +825,7 @@ function App() {
               </div>
             </div>
           </section>
-        )}
-
-        {/* =========================
+        )}        {/* =========================
             CREATE SCENARIO
            ========================= */}
 
