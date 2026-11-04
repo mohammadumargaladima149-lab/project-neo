@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   categories,
   scenarios,
@@ -8,6 +8,10 @@ import {
   initialAnswers,
   type CommunityAnswer,
 } from "./data/answers";
+import { readStoredValue, writeStoredValue } from "./data/storage";
+
+const ANSWERS_STORAGE_KEY = "project-neo.answers.v1";
+const SCENARIOS_STORAGE_KEY = "project-neo.scenarios.v1";
 
 type Screen =
   | "home"
@@ -20,9 +24,12 @@ type Screen =
 type SortMode = "liked" | "newest" | "unexpected";
 
 function App(): JSX.Element {
+  const [availableScenarios, setAvailableScenarios] = useState<Scenario[]>(
+    () => readStoredValue(SCENARIOS_STORAGE_KEY, scenarios)
+  );
   const [screen, setScreen] = useState<Screen>("explore");
   const [selectedScenario, setSelectedScenario] =
-    useState<Scenario>(scenarios[0]);
+    useState<Scenario>(() => readStoredValue(SCENARIOS_STORAGE_KEY, scenarios)[0]);
   const [selectedCategory, setSelectedCategory] =
     useState("All");
   const [search, setSearch] = useState("");
@@ -34,7 +41,9 @@ function App(): JSX.Element {
   const [questionThree, setQuestionThree] = useState("");
 
   const [communityAnswers, setCommunityAnswers] =
-    useState<CommunityAnswer[]>(initialAnswers);
+    useState<CommunityAnswer[]>(() =>
+      readStoredValue(ANSWERS_STORAGE_KEY, initialAnswers)
+    );
 
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] =
@@ -46,6 +55,14 @@ function App(): JSX.Element {
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    writeStoredValue(ANSWERS_STORAGE_KEY, communityAnswers);
+  }, [communityAnswers]);
+
+  useEffect(() => {
+    writeStoredValue(SCENARIOS_STORAGE_KEY, availableScenarios);
+  }, [availableScenarios]);
 
   const canSubmit =
     questionOne.trim() !== "" &&
@@ -59,7 +76,7 @@ function App(): JSX.Element {
     createCategory !== "";
 
   const filteredScenarios = useMemo(() => {
-    return scenarios.filter((scenario) => {
+    return availableScenarios.filter((scenario) => {
       const matchesCategory =
         selectedCategory === "All" ||
         scenario.category === selectedCategory ||
@@ -75,7 +92,7 @@ function App(): JSX.Element {
 
       return matchesCategory && matchesSearch;
     });
-  }, [selectedCategory, search]);
+  }, [availableScenarios, selectedCategory, search]);
 
   const sortedAnswers = useMemo(() => {
     const answers = [...communityAnswers];
@@ -153,13 +170,13 @@ function App(): JSX.Element {
   }
 
   function nextScenario() {
-    const currentIndex = scenarios.findIndex(
+    const currentIndex = availableScenarios.findIndex(
       (scenario) => scenario.id === selectedScenario.id
     );
 
-    const nextIndex = (currentIndex + 1) % scenarios.length;
+    const nextIndex = (currentIndex + 1) % availableScenarios.length;
 
-    setSelectedScenario(scenarios[nextIndex]);
+    setSelectedScenario(availableScenarios[nextIndex]);
     setQuestionOne("");
     setQuestionTwo("");
     setQuestionThree("");
@@ -218,7 +235,7 @@ function App(): JSX.Element {
     return null;
   }
 
-  async function submitScenario() {
+  function submitScenario() {
     if (isSubmitting) return;
 
     setCreateError("");
@@ -234,24 +251,24 @@ function App(): JSX.Element {
     try {
       setIsSubmitting(true);
 
-      // Temporary simulation until database integration.
-      await new Promise((resolve) =>
-        setTimeout(resolve, 900)
-      );
+      const newScenario: Scenario = {
+        id: Date.now(),
+        category: createCategory,
+        title: createTitle.trim(),
+        description: createDescription.trim(),
+        prompt: createPrompt.trim(),
+        count: 0,
+        tag: createCategory,
+      };
+
+      setAvailableScenarios((current) => [newScenario, ...current]);
 
       setCreateTitle("");
       setCreateDescription("");
       setCreatePrompt("");
       setCreateCategory("Deep");
 
-      setCreateSuccess(
-        "Your scenario has been submitted for review."
-      );
-
-      setTimeout(() => {
-        setScreen("explore");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }, 1200);
+      setCreateSuccess("Saved in this browser. Only you can see it on this device.");
     } catch (error) {
       console.error("Scenario submission failed:", error);
       setCreateError(
@@ -778,8 +795,8 @@ function App(): JSX.Element {
                     <strong>Before you submit</strong>
                     <p>
                       Keep it interesting, answerable, and
-                      respectful. Every community scenario goes
-                      through review before being published.
+                      respectful. Your scenario is saved in this
+                      browser and is visible only on this device.
                     </p>
                   </div>
 
@@ -791,7 +808,7 @@ function App(): JSX.Element {
                   >
                     {isSubmitting
                       ? "Submitting..."
-                      : "Submit for review"}
+                      : "Save on this device"}
 
                     {!isSubmitting && <span>→</span>}
                   </button>
@@ -827,10 +844,10 @@ function App(): JSX.Element {
                   </div>
 
                   <div className="review-note">
-                    <strong>Community review</strong>
+                    <strong>Saved privately</strong>
                     <p>
-                      New scenarios are reviewed before they
-                      appear publicly.
+                      Scenarios you create stay in this browser
+                      until Project Neo has a shared community backend.
                     </p>
                   </div>
                 </div>
