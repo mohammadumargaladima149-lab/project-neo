@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   categories,
   scenarios,
@@ -9,6 +10,14 @@ import {
   type CommunityAnswer,
 } from "./data/answers";
 import { readStoredValue, writeStoredValue } from "./data/storage";
+import {
+  fetchCommunityAnswers,
+  fetchPublishedScenarios,
+  submitCommunityAnswers,
+  submitScenarioForReview,
+  toggleCommunityLike,
+} from "./lib/community";
+import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
 const ANSWERS_STORAGE_KEY = "project-neo.answers.v1";
 const SCENARIOS_STORAGE_KEY = "project-neo.scenarios.v1";
@@ -19,11 +28,13 @@ type Screen =
   | "reveal"
   | "community"
   | "explore"
-  | "create";
+  | "create"
+  | "signin";
 
 type SortMode = "liked" | "newest" | "unexpected";
 
 function App(): JSX.Element {
+  const [user, setUser] = useState<User | null>(null);
   const [availableScenarios, setAvailableScenarios] = useState<Scenario[]>(
     () => readStoredValue(SCENARIOS_STORAGE_KEY, scenarios)
   );
@@ -55,6 +66,9 @@ function App(): JSX.Element {
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
+  const [email, setEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
 
   useEffect(() => {
     writeStoredValue(ANSWERS_STORAGE_KEY, communityAnswers);
@@ -63,6 +77,64 @@ function App(): JSX.Element {
   useEffect(() => {
     writeStoredValue(SCENARIOS_STORAGE_KEY, availableScenarios);
   }, [availableScenarios]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    let isActive = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (isActive) setUser(data.user);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      isActive = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isActive = true;
+    fetchPublishedScenarios()
+      .then((remoteScenarios) => {
+        if (isActive && remoteScenarios.length > 0) {
+          setAvailableScenarios(remoteScenarios);
+          setSelectedScenario((current) =>
+            remoteScenarios.find((scenario) => scenario.id === current.id) ??
+            remoteScenarios[0]
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("Could not load community scenarios:", error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isActive = true;
+    fetchCommunityAnswers(selectedScenario.id)
+      .then((remoteAnswers) => {
+        if (isActive) setCommunityAnswers(remoteAnswers);
+      })
+      .catch((error: unknown) => {
+        console.error("Could not load community answers:", error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedScenario.id]);
 
   const canSubmit =
     questionOne.trim() !== "" &&
@@ -109,7 +181,12 @@ function App(): JSX.Element {
       );
     }
 
-    return answers.sort((a, b) => b.id - a.id);
+    return answers.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      }
+      return Number(b.id) - Number(a.id);
+    });
   }, [communityAnswers, sortMode]);
 
   function openScenario(scenario: Scenario) {
@@ -126,10 +203,17 @@ function App(): JSX.Element {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function submitAnswers() {
+  async function submitAnswers() {
     if (!canSubmit) return;
 
+    if (isSupabaseConfigured && !user) {
+      setAuthMessage("Sign in to add your answers to the community.");
+      setScreen("signin");
+      return;
+    }
+
     try {
+      setIsSubmittingAnswers(true);
       const submittedAnswers = [
         questionOne.trim(),
         questionTwo.trim(),
@@ -137,17 +221,16 @@ function App(): JSX.Element {
       ];
 
       const newAnswers: CommunityAnswer[] =
-        submittedAnswers.map((answer, index) => ({
-          id: Date.now() + index,
-          name: "You",
-          answer,
-          likes: 0,
-        }));
+        isSupabaseConfigured && user
+          ? await submitCommunityAnswers(selectedScenario.id, submittedAnswers, user)
+          : submittedAnswers.map((answer, index) => ({
+              id: Date.now() + index,
+              name: "You",
+              answer,
+              likes: 0,
+            }));
 
-      setCommunityAnswers((currentAnswers) => [
-        ...newAnswers,
-        ...currentAnswers,
-      ]);
+      setCommunityAnswers((currentAnswers) => [...newAnswers, ...currentAnswers]);
 
       setScreen("reveal");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -156,17 +239,36 @@ function App(): JSX.Element {
       window.alert(
         "We couldn't submit your answers. Please try again."
       );
+    } finally {
+      setIsSubmittingAnswers(false);
     }
   }
 
-  function toggleLike(id: number) {
-    setCommunityAnswers((currentAnswers) =>
-      currentAnswers.map((answer) =>
-        answer.id === id
-          ? { ...answer, likes: answer.likes + 1 }
-          : answer
-      )
-    );
+  async function toggleLike(id: number | string) {
+    if (isSupabaseConfigured && !user) {
+      setAuthMessage("Sign in to like community answers.");
+      setScreen("signin");
+      return;
+    }
+
+    try {
+      if (isSupabaseConfigured && typeof id === "string") {
+        await toggleCommunityLike(id);
+        setCommunityAnswers(await fetchCommunityAnswers(selectedScenario.id));
+        return;
+      }
+
+      setCommunityAnswers((currentAnswers) =>
+        currentAnswers.map((answer) =>
+          answer.id === id
+            ? { ...answer, likes: answer.likes + 1 }
+            : answer
+        )
+      );
+    } catch (error) {
+      console.error("Like update failed:", error);
+      window.alert("We couldn't update your like. Please try again.");
+    }
   }
 
   function nextScenario() {
@@ -203,6 +305,27 @@ function App(): JSX.Element {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function signInWithEmail() {
+    if (!supabase) {
+      setAuthMessage("Add your Supabase project settings to enable sign in.");
+      return;
+    }
+
+    setAuthMessage("");
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+
+    setAuthMessage(error ? error.message : "Check your email for a sign-in link.");
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) setAuthMessage(error.message);
+  }
+
   function validateCreateScenario(): string | null {
     if (!createTitle.trim()) {
       return "Please give your scenario a title.";
@@ -235,7 +358,7 @@ function App(): JSX.Element {
     return null;
   }
 
-  function submitScenario() {
+  async function submitScenario() {
     if (isSubmitting) return;
 
     setCreateError("");
@@ -245,6 +368,12 @@ function App(): JSX.Element {
 
     if (validationError) {
       setCreateError(validationError);
+      return;
+    }
+
+    if (isSupabaseConfigured && !user) {
+      setAuthMessage("Sign in to submit a scenario for community review.");
+      setScreen("signin");
       return;
     }
 
@@ -261,14 +390,20 @@ function App(): JSX.Element {
         tag: createCategory,
       };
 
-      setAvailableScenarios((current) => [newScenario, ...current]);
+      if (isSupabaseConfigured && user) {
+        await submitScenarioForReview(newScenario, user);
+      } else {
+        setAvailableScenarios((current) => [newScenario, ...current]);
+      }
 
       setCreateTitle("");
       setCreateDescription("");
       setCreatePrompt("");
       setCreateCategory("Deep");
 
-      setCreateSuccess("Saved in this browser. Only you can see it on this device.");
+      setCreateSuccess(isSupabaseConfigured
+        ? "Submitted for community review. It will appear after approval."
+        : "Saved in this browser. Only you can see it on this device.");
     } catch (error) {
       console.error("Scenario submission failed:", error);
       setCreateError(
@@ -301,14 +436,65 @@ function App(): JSX.Element {
 
           <button
             className="sign-in-button"
+            onClick={user ? signOut : () => {
+              setAuthMessage("");
+              setScreen("signin");
+            }}
             type="button"
           >
-            Sign in
+            {user ? "Sign out" : "Sign in"}
           </button>
         </nav>
       </header>
 
       <main>
+        {screen === "signin" && (
+          <section className="auth-screen">
+            <div className="auth-card">
+              <button className="back-button" onClick={goExplore} type="button">
+                ← Back to Explore
+              </button>
+              <p className="eyebrow">YOUR ACCOUNT</p>
+              <h1>Join the conversation.</h1>
+              {user ? (
+                <p className="auth-description">
+                  Signed in as {user.email}. You can now answer scenarios and submit ideas.
+                </p>
+              ) : (
+                <>
+                  <p className="auth-description">
+                    Enter your email and we’ll send you a secure sign-in link.
+                  </p>
+                  <form onSubmit={(event) => {
+                    event.preventDefault();
+                    void signInWithEmail();
+                  }}>
+                    <label htmlFor="sign-in-email">Email address</label>
+                    <input
+                      id="sign-in-email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="you@example.com"
+                    />
+                    <button className="primary-button" type="submit">
+                      Send sign-in link <span>→</span>
+                    </button>
+                  </form>
+                </>
+              )}
+              {authMessage && <p className="auth-message" role="status">{authMessage}</p>}
+              {!isSupabaseConfigured && (
+                <p className="auth-setup-note">
+                  Sign-in becomes available after a Supabase project is connected.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* EXPLORE */}
 
         {screen === "explore" && (
@@ -518,11 +704,12 @@ function App(): JSX.Element {
 
               <button
                 className="primary-button"
-                disabled={!canSubmit}
+                disabled={!canSubmit || isSubmittingAnswers}
                 onClick={submitAnswers}
                 type="button"
               >
-                Reveal community <span>→</span>
+                {isSubmittingAnswers ? "Saving..." : "Reveal community"}
+                {!isSubmittingAnswers && <span>→</span>}
               </button>
             </div>
           </section>
@@ -794,9 +981,9 @@ function App(): JSX.Element {
                   <div className="create-guideline">
                     <strong>Before you submit</strong>
                     <p>
-                      Keep it interesting, answerable, and
-                      respectful. Your scenario is saved in this
-                      browser and is visible only on this device.
+                      {isSupabaseConfigured
+                        ? "Keep it interesting, answerable, and respectful. Submitted scenarios go through community review before they are published."
+                        : "Keep it interesting, answerable, and respectful. Your scenario is saved in this browser and is visible only on this device."}
                     </p>
                   </div>
 
@@ -808,7 +995,9 @@ function App(): JSX.Element {
                   >
                     {isSubmitting
                       ? "Submitting..."
-                      : "Save on this device"}
+                      : isSupabaseConfigured
+                        ? "Submit for review"
+                        : "Save on this device"}
 
                     {!isSubmitting && <span>→</span>}
                   </button>
@@ -844,10 +1033,11 @@ function App(): JSX.Element {
                   </div>
 
                   <div className="review-note">
-                    <strong>Saved privately</strong>
+                    <strong>{isSupabaseConfigured ? "Community review" : "Saved privately"}</strong>
                     <p>
-                      Scenarios you create stay in this browser
-                      until Project Neo has a shared community backend.
+                      {isSupabaseConfigured
+                        ? "New scenarios appear publicly after a moderator approves them."
+                        : "Scenarios you create stay in this browser until Project Neo has a shared community backend."}
                     </p>
                   </div>
                 </div>

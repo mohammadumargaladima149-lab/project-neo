@@ -1,5 +1,5 @@
 export type Scenario = {
-  id: number;
+  id: number | string;
   category: string;
   title: string;
   description: string;
