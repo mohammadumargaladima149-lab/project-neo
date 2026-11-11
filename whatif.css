@@ -554,3 +554,143 @@ main {
     height: 140px;
   }
 }
+
+.brand,
+.signup-link {
+  text-decoration: none;
+}
+
+.login-layout {
+  width: min(100%, 900px);
+  flex: 1;
+  margin: 18px auto 14px;
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  align-items: center;
+  gap: clamp(38px, 8vw, 100px);
+}
+
+.login-panel {
+  width: 100%;
+  max-width: 360px;
+  justify-self: center;
+}
+
+.login-panel .eyebrow {
+  margin-bottom: 8px;
+  color: #8fe2db;
+  font-size: 8px;
+}
+
+.login-panel h2 {
+  margin: 0 0 8px;
+  font-size: 27px;
+  letter-spacing: -1px;
+}
+
+.login-copy {
+  margin: 0 0 15px;
+  color: #a1a3af;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.topbar-action {
+  font-size: 10px;
+}
+
+.signup-link {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 6px 11px;
+  border: 1px solid #292c38;
+  border-radius: 6px;
+  color: #e1dfff;
+}
+
+.password-toggle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a3a5b2;
+  cursor: pointer;
+}
+
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0 15px;
+  font-size: 9px;
+}
+
+.login-options a,
+.create-account a {
+  color: #beb2ff;
+  text-decoration: none;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a0a2af;
+}
+
+.remember input {
+  margin: 0;
+  accent-color: #bca4ff;
+}
+
+.create-account,
+.secure-note {
+  color: #a0a2af;
+  text-align: center;
+  font-size: 9px;
+}
+
+.create-account {
+  margin: 12px 0;
+}
+
+.secure-note {
+  margin-top: 22px;
+  color: #858897;
+}
+
+@media (max-width: 900px) {
+  .login-layout {
+    gap: clamp(28px, 5vw, 52px);
+  }
+}
+
+@media (max-width: 700px) {
+  .login-layout {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    margin: 30px auto;
+  }
+
+  .login-layout .intro-card,
+  .login-panel {
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
+
+  .login-panel h2 {
+    font-size: clamp(24px, 6vw, 30px);
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar-action {
+    text-align: right;
+    font-size: 9px;
+  }
+
+  .signup-link {
+    padding: 6px 8px;
+  }
+}
