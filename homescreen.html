@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salon Spheres — Debate Feed</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #101117;
+      --surface: #1a1c26;
+      --surface-raised: #222431;
+      --line: #303241;
+      --text: #f2f1fa;
+      --muted: #a6a6b7;
+      --purple: #c69aff;
+      --purple-dark: #8a5de3;
+      --cyan: #57d9ee;
+      --pink: #ff83bd;
+      --green: #72e8bb;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% 0, #27213d 0, transparent 36rem),
+        var(--page);
+      color: var(--text);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .app {
+      width: min(100%, 1120px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 20px 24px 110px;
+    }
+
+    .topline, .section-heading, .card-top, .card-footer,
+    .vote-row, .bottom-nav, .top-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topline {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      letter-spacing: .14em;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .online {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    .top-tabs {
+      justify-content: flex-start;
+      overflow-x: auto;
+      margin-bottom: 18px;
+      padding-bottom: 3px;
+    }
+
+    .tab {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      color: #c5c4d1;
+      background: #191a23;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      color: #211633;
+      border-color: transparent;
+      background: linear-gradient(110deg, #c995ff, #8c71f4);
+      font-weight: 750;
+    }
+
+    .featured {
+      border: 1px solid #6a4e9c;
+      box-shadow: 0 0 20px #9c67ff24, inset 0 0 20px #9c67ff0a;
+    }
+
+    .card {
+      background: linear-gradient(145deg, #20212c, #191a23);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+      min-width: 0;
+    }
+
+    .card-top {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 9px;
+    }
+
+    .tag {
+      color: var(--cyan);
+      background: #12303a;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .03em;
+    }
+
+    .time { color: #ffaf84; }
+
+    .bookmark {
+      margin-left: auto;
+      color: #c4c2d0;
+      background: none;
+      border: 0;
+      cursor: pointer;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      font-size: clamp(21px, 3vw, 30px);
+      line-height: 1.18;
+      letter-spacing: -.035em;
+      margin-bottom: 9px;
+    }
+
+    h2 {
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: -.02em;
+      margin-bottom: 8px;
+    }
+
+    .summary, .description {
+      color: #b9b8c5;
+      margin-bottom: 12px;
+    }
+
+    .summary { font-size: 13px; }
+
+    .split-bar {
+      display: flex;
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #343544;
+      margin: 8px 0 5px;
+    }
+
+    .split-bar span:first-child { background: var(--purple); }
+    .split-bar span:last-child { background: var(--cyan); }
+
+    .split-labels, .small-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .split-labels span:last-child { text-align: right; }
+
+    .card-footer {
+      border-top: 1px solid #30313d;
+      margin-top: 14px;
+      padding-top: 12px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .author {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #764c9c, #263f5d);
+      font-size: 14px;
+    }
+
+    .author small { display: block; color: var(--muted); }
+
+    .button {
+      border: 0;
+      border-radius: 999px;
+      color: #241733;
+      background: linear-gradient(110deg, #d4a5ff, #a584ff);
+      font-weight: 800;
+      padding: 9px 16px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .section-heading {
+      margin: 25px 0 12px;
+    }
+
+    .section-heading h2 { margin: 0; }
+
+    .section-heading .right {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      color: #e6d1ff;
+      background: #352448;
+      border-radius: 999px;
+      font-size: 10px;
+      padding: 3px 8px;
+      vertical-align: middle;
+      margin-left: 5px;
+    }
+
+    .inquiry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .inquiry-card { margin: 0; }
+
+    .inquiry-card .description { font-size: 12px; }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin: 13px 0;
+    }
+
+    .option {
+      padding: 10px;
+      text-align: center;
+      background: #171821;
+      border: 1px solid #30313f;
+      border-radius: 11px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .option strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .vote-row {
+      border-top: 1px solid #30313d;
+      padding: 9px 0 0;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+
+    .vote-row .label { color: #d8d7e2; }
+
+    .vote-row .value {
+      color: var(--cyan);
+      font-weight: 750;
+    }
+
+    .vote-track {
+      height: 5px;
+      margin-top: 5px;
+      background: #343544;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .vote-track span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--purple), var(--cyan));
+    }
+
+    .prompt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px;
+      margin: 17px 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #1b1c26;
+    }
+
+    .prompt-icon {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #3a3151;
+      font-size: 19px;
+    }
+
+    .prompt p { margin: 0; color: var(--muted); font-size: 12px; }
+    .prompt strong { display: block; color: var(--text); font-size: 14px; }
+
+    .bottom-nav {
+      position: fixed;
+      z-index: 5;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: min(100%, 1120px);
+      padding: 10px max(20px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid #30313d;
+      background: #111219ed;
+      backdrop-filter: blur(16px);
+    }
+
+    .nav-item {
+      flex: 1;
+      border: 0;
+      background: none;
+      color: #bab9c7;
+      cursor: pointer;
+      display: grid;
+      justify-items: center;
+      gap: 3px;
+      font-size: 11px;
+    }
+
+    .nav-icon { font-size: 20px; }
+
+    .nav-item.active { color: var(--purple); }
+
+    .nav-item.create .nav-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      margin-top: -22px;
+      border-radius: 50%;
+      color: #21162f;
+      background: linear-gradient(135deg, #e4b2ff, #9f75ff);
+      box-shadow: 0 0 24px #b581ff80;
+      font-size: 30px;
+      font-weight: 500;
+    }
+
+    @media (min-width: 850px) {
+      .app { padding-top: 28px; }
+      .feed-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+        align-items: start;
+        gap: 18px;
+      }
+      .feed-column, .side-column { min-width: 0; }
+      .section-heading { margin-top: 4px; }
+      .side-column .section-heading { margin-top: 0; }
+    }
+
+    @media (max-width: 600px) {
+      .app { padding: 12px 12px 100px; }
+      .topline { margin-bottom: 13px; }
+      .top-tabs { margin-bottom: 13px; }
+      .card { padding: 14px; border-radius: 14px; }
+      .inquiry-grid { grid-template-columns: 1fr; gap: 12px; }
+      .section-heading { margin-top: 21px; }
+      .button { padding: 8px 13px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="topline">
+      <span class="brand">SALON SPHERES</span>
+      <span class="online">● 1,248 Debating Now</span>
+    </header>
+
+    <nav class="top-tabs" aria-label="Feed categories">
+      <button class="tab active">✦ Trending</button>
+      <button class="tab">♧ Moral Dilemmas</button>
+      <button class="tab">♜ Workplace</button>
+      <button class="tab"># Relationships</button>
+      <button class="tab"># Family</button>
+    </nav>
+
+    <section class="feed-layout">
+      <div class="feed-column">
+        <article class="card featured">
+          <div class="card-top">
+            <span class="tag">DAILY DILEMMA #104</span>
+            <span class="time">◷ 3h left</span>
+            <button class="bookmark" aria-label="Bookmark dilemma">♧</button>
+          </div>
+          <h1>The Automated Layoff: Would you deploy AI knowing it will displace your own team?</h1>
+          <p class="summary">Leadership promises 40% efficiency gains and board-level praise, but you personally hired all 14…</p>
+
+          <div class="small-meta">
+            <span>Stance A: Deploy Model</span>
+            <span>Stance B: Sabotage / Refuse</span>
+          </div>
+          <div class="split-bar"><span style="width:42%"></span><span style="width:58%"></span></div>
+          <div class="split-labels"><span>42%</span><span>58%</span></div>
+
+          <div class="card-footer">
+            <span>9,420 votes logged<br><span style="color:var(--pink)">Polarized consensus</span></span>
+          </div>
+
+          <div class="options">
+            <div class="option"><strong>OPTION A</strong>Deploy as ordered</div>
+            <div class="option"><strong>OPTION B</strong>Refuse execution</div>
+          </div>
+
+          <div class="card-footer">
+            <div class="author">
+              <span class="avatar">👩🏻</span>
+              <span>Curated by Dr. M. Vane<small>Ethics Director @ SynthSys</small></span>
+            </div>
+            <button class="button">Deliberate ↗</button>
+          </div>
+        </article>
+
+        <div class="section-heading">
+          <h2>Active Inquiries <span class="badge">3 New</span></h2>
+          <span class="right">Chronological⌄</span>
+        </div>
+
+        <article class="card">
+          <div class="card-top">
+            <span class="tag">#Ethics</span>
+            <span class="tag" style="color:var(--pink);background:#371e32">High Consequence</span>
+            <button class="bookmark" aria-label="Share inquiry">↗</button>
+            <button class="bookmark" aria-label="Bookmark inquiry">♧</button>
+          </div>
+          <h2>The NDA vs The Whistleblower: You find a critical flaw in medical firmware…</h2>
+          <p class="description">Pacemaker telemetry reveals a 0.3% fatal desync bug. Reporting publicly breach violates a 7-figure NDA with instant personal insolvency.</p>
+
+          <div class="vote-row"><span class="label">◉ Disclose immediately to press</span><span class="value">67%</span></div>
+          <div class="vote-track"><span style="width:67%"></span></div>
+          <div class="vote-row"><span class="label">◎ Escalate strictly internally</span><span class="value">33%</span></div>
+          <div class="vote-track"><span style="width:33%"></span></div>
+
+          <div class="card-footer">
+            <span>▣ 1.4k arguments &nbsp; ▣ 3.1k voted</span>
+            <span>View Stances ›</span>
+          </div>
+        </article>
+      </div>
+
+      <aside class="side-column">
+        <article class="card inquiry-card">
+          <div class="card-top">
+            <span class="tag">#Relationships</span>
+            <span class="tag">#Family</span>
+            <button class="bookmark" aria-label="Bookmark inquiry">♧</button>
+          </div>
+          <h2>The Double-Booked Wedding: Your estranged sibling vs your childhood best friend on the same day…</h2>
+          <p class="description">Both destinations require cross-country flights. Your sibling wants this as your final chance at reconciliation; your best friend asked you to be Maid of Honor/Best Man two years ago.</p>
+
+          <div class="options">
+            <div class="option"><strong>Option A</strong>Attend Sibling<br>31% support</div>
+            <div class="option"><strong>Option B</strong>Attend Best Friend<br>69% support</div>
+          </div>
+          <div class="card-footer">
+            <span>👥 890 perspectives shared</span>
+            <span>View Stances ›</span>
+          </div>
+        </article>
+
+        <article class="card inquiry-card">
+          <div class="card-top">
+            <span class="tag">#Workplace</span>
+            <span class="tag">#Economics</span>
+            <button class="bookmark" aria-label="Bookmark inquiry">♧</button>
+          </div>
+          <h2>Remote vs In-Office Ultimatum: Company offers 30% raise to return to 5-day office work…</h2>
+          <p class="description">You commute 90 minutes each way. Refusing locks your salary indefinitely with no equity refreshes for two years.</p>
+          <div class="small-meta"><span>Take 30% (+$3k commute)</span><span>24%</span></div>
+          <div class="vote-track"><span style="width:24%"></span></div>
+          <div class="small-meta" style="margin-top:10px"><span>Keep Remote (flat compensation)</span><span>76%</span></div>
+          <div class="vote-track"><span style="width:76%"></span></div>
+          <p class="summary" style="margin:13px 0 0">★ Top Consensus Counter-Argument<br>“A 3-hour daily commute amounts to 750 unpaid hours annually. Your effective hourly rate drops by 8% despite the nominal 30% raise.”</p>
+          <div class="card-footer">
+            <span>▣ 521 arguments &nbsp; ▣ 4.8k votes</span>
+            <span>View Stances ›</span>
+          </div>
+        </article>
+
+        <div class="prompt">
+          <span class="prompt-icon">◉</span>
+          <p><strong>Got an impossible choice?</strong>Present it to the salon. Watch human morality bifurcate in real time.</p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <button class="nav-item active"><span class="nav-icon">◎</span><span>Feed</span></button>
+    <button class="nav-item"><span class="nav-icon">▱</span><span>Deliberate</span></button>
+    <button class="nav-item create" aria-label="Create"><span class="nav-icon">+</span></button>
+    <button class="nav-item"><span class="nav-icon">♙</span><span>Profile</span></button>
+  </nav>
+
+  <script>
+    document.querySelectorAll(".nav-item:not(.create)").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+      });
+    });
+  </script>
+</body>
+</html>
