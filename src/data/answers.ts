@@ -1,9 +1,10 @@
 export type CommunityAnswer = {
-  id: number;
+  id: number | string;
   name: string;
   answer: string;
   likes: number;
   unexpected?: boolean;
+  createdAt?: string;
 };
 
 export const initialAnswers: CommunityAnswer[] = [

@@ -1,77 +1,24 @@
-# React + TypeScript + Vite
+# Project Neo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Project Neo is a React and TypeScript app for exploring hypothetical scenarios and sharing community answers.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Without Supabase settings, answers, likes, and created scenarios are stored in this browser only.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Connect Supabase
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Create a Supabase project.
+2. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from the project's Connect dialog.
+3. Run `supabase/migrations/20261104000000_initial_schema.sql` in the Supabase SQL Editor.
+4. Set the Auth site URL and allowed redirect URL to your app URL. For local development, use `http://localhost:5173`.
+5. Run `npm install` to install the Supabase client, then restart the Vite dev server.
 
-```
+The app uses email sign-in links. Signed-in users can submit answers and like answers. Scenario submissions are saved as `pending`; publish or reject them by changing `scenarios.status` in the Supabase dashboard. Row-level security policies restrict writes to signed-in users and their own records.
 
-# what-if-
+Never put a Supabase secret or service-role key in a `VITE_` variable. Browser apps should use the publishable key with row-level security enabled. See the [Supabase React quickstart](https://supabase.com/docs/guides/auth/quickstarts/react) and [row-level security guide](https://supabase.com/docs/guides/database/postgres/row-level-security).
